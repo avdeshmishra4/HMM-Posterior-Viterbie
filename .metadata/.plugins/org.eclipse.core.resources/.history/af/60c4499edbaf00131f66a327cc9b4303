@@ -1,0 +1,74 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class PosteriorPredictor {
+	
+	
+	public void forwardAlgorithm(String actualSequence, String obs,
+			HiddenMarkovModel hmm, BufferedWriter bw, String stateSymbols[]) throws IOException {}
+
+	/*
+	 * 
+	 */
+
+	public String viterbiTraceBack(double viterbi[][],
+			double viterbiPointer[][], int numState, String stateSymbols[]) {
+
+		StringBuilder sb = new StringBuilder();
+		StringBuilder sbReverse = new StringBuilder();
+		double traceBackStartValue = viterbi[0][viterbi[0].length - 1];
+		int stateIndex = 0;
+
+		for (int x = 1; x < numState; x++) {
+
+			if (traceBackStartValue > viterbi[0][viterbi[0].length - 1]) {
+				traceBackStartValue = viterbi[x][viterbi[x].length - 1];
+				stateIndex = x;
+			}
+
+		}
+
+		for (int y = 0; y < numState; y++) {
+
+			if (stateIndex == y) {
+
+				sb.append(stateSymbols[y]);
+
+			}
+
+		}
+
+		for (int i = viterbiPointer[0].length - 2; i >= 0; i--) {
+
+			if (viterbiPointer[stateIndex][i] == 1) {
+
+				sb.append("F");
+			} else if (viterbiPointer[stateIndex][i] == -1) {
+
+				sb.append("L");
+
+			}
+
+		}
+
+		// System.out.println(sb.toString());
+
+		for (int j = sb.length() - 1; j >= 0; j--) {
+
+			char st = sb.charAt(j);
+
+			sbReverse.append(st);
+
+		}
+
+		return sbReverse.toString();
+
+	}
+	
+	
+	
+	
+
+}

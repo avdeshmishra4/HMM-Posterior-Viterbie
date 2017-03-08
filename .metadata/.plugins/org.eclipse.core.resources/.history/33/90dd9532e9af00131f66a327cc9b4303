@@ -1,0 +1,78 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class PosteriorPredictor {
+
+	public void forwardAlgorithm(String actualSequence, String obs,
+			HiddenMarkovModel hmm, BufferedWriter bw, String stateSymbols[])
+			throws IOException {
+
+		int seqLen = obs.length();
+		double forwardMatrix[][] = new double[hmm.getNumState()][seqLen + 1];
+		double path1;
+		double path2;
+		double totalPath;
+		double emProb;
+
+		for (int i = 0; i < hmm.getNumState(); i++) {
+
+			forwardMatrix[i][0] = hmm.getiProb()[i];
+
+		}
+
+		for (int k = 1; k < seqLen + 1; k++) {
+
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				int stateCount = 0;
+				double pathEndInFEmit = forwardMatrix[stateCount][k - 1];
+				double pathEndInLEmit = forwardMatrix[stateCount + 1][k - 1];
+				int curObs = Character.getNumericValue(obs.charAt(k - 1));
+				int transitionMatrixNoOfCol=0;
+				
+				
+				path1 = pathEndInFEmit +Math.log(hmm.getTransProb()[stateCount][transitionMatrixNoOfCol]);
+				path2 = pathEndInLEmit + Math.log(hmm.getTransProb()[stateCount+1][transitionMatrixNoOfCol]);
+				
+				totalPath = path1+path2;
+				
+				if (l == 0) {
+
+					path1 = pathEndInFEmit * hmm.getTransProb()[0][0];
+					path2 = pathEndInLEmit * hmm.getTransProb()[1][0];
+
+					mostProbable = path1 + path2;
+					emProb = hmm.getEmissProb()[l][curObs - 1];
+
+					forwardMatrix[l][k] = Math.log10(emProb * mostProbable);
+
+				} else {
+
+					path1 = pathEndInFEmit * hmm.getTransProb()[0][1];
+					path2 = pathEndInLEmit * hmm.getTransProb()[1][1];
+
+					mostProbable = path1 + path2;
+					emProb = hmm.getEmissProb()[l][curObs - 1];
+
+					forwardMatrix[l][k] = Math.log10(emProb * mostProbable);
+
+				}
+
+			}
+
+		}
+		
+		System.out.println("implement");
+
+	}
+
+	public String backwardAlogrithm(double viterbi[][],
+			double viterbiPointer[][], int numState, String stateSymbols[]) {
+
+		return null;
+
+	}
+
+}

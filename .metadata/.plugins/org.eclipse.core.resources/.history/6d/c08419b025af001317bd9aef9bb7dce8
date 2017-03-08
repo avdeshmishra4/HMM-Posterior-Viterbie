@@ -1,0 +1,57 @@
+package dishonestcasino;
+
+public class HiddenMarkovModel {
+	/*
+	 * number of states that hidden markov model have
+	 */
+	private int numState;
+
+	/*
+	 * number of events in each state e.g. dice has 6 possible events from (1 to
+	 * 6)
+	 */
+	private int eventSize;
+
+	/*
+	 * transition probability
+	 */
+
+	private double transProb[][];
+
+	/*
+	 * emission probability
+	 */
+
+	private double emissProb[][];
+
+	
+
+	/*
+	 * probability of starting state
+	 */
+
+	private double iProb[];
+
+	/*
+	 * probability of end state
+	 */
+
+	private double eProb[];
+	
+	
+	/*
+	 * constructor for HiddenMarkovModel
+	 */
+	
+	private HiddenMarkovModel(int numState, int eventSize) {
+
+		this.numState = numState;
+		this.eventSize = eventSize;
+		iProb = new double[numState];
+		eProb = new double[numState];
+		transProb = new double[numState][numState];
+		emissProb = new double[numState][eventSize];
+
+	}
+
+}

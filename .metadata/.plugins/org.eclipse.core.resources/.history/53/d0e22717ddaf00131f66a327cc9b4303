@@ -1,0 +1,96 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class PosteriorPredictor {
+	
+	
+	public void forwardAlgorithm(String actualSequence, String obs,
+			HiddenMarkovModel hmm, BufferedWriter bw, String stateSymbols[]) throws IOException {
+		
+		int seqLen = obs.length();
+		double forwardMatrix[][] = new double[hmm.getNumState()][seqLen+1];
+		
+		
+		for (int i = 0; i < hmm.getNumState(); i++) {
+
+			viterbi[i][0] = Math.log10(hmm.getiProb()[0]);
+			viterbiPointer[i][0] = Math.log10(hmm.getiProb()[1]);
+
+		}
+
+		for (int k = 1; k < seqLen + 1; k++) {
+
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				int stateCount = 0;
+				double pathEndInFEmit = viterbi[stateCount][k - 1];
+				double pathEndInLEmit = viterbi[stateCount + 1][k - 1];
+				int curObs = Character.getNumericValue(obs.charAt(k - 1));
+
+				if (l == 0) {
+
+					path1 = pathEndInFEmit + Math.log10(hmm.getTransProb()[0][0]);
+					path2 = pathEndInLEmit + Math.log10(hmm.getTransProb()[1][0]);
+
+					mostProbable = Math.max(path1, path2);
+					emProb = Math.log10(hmm.getEmissProb()[l][curObs - 1]);
+
+					viterbi[l][k] = emProb + mostProbable;
+
+					if (mostProbable == path1) {
+
+						viterbiPointer[l][k] = 1;
+
+					} else if (mostProbable == path2) {
+
+						viterbiPointer[l][k] = -1;
+
+					}
+
+				} else {
+
+					path1 = pathEndInFEmit + Math.log10(hmm.getTransProb()[0][1]);
+					path2 = pathEndInLEmit + Math.log10(hmm.getTransProb()[1][1]);
+
+					mostProbable = Math.max(path1, path2);
+					emProb = Math.log10(hmm.getEmissProb()[l][curObs - 1]);
+
+					viterbi[l][k] = emProb + mostProbable;
+
+					if (mostProbable == path1) {
+
+						viterbiPointer[l][k] = 1;
+
+					} else if (mostProbable == path2) {
+
+						viterbiPointer[l][k] = -1;
+
+					}
+
+				}
+
+			}
+
+		}
+		
+		
+	}
+
+	
+	public String backwardAlogrithm(double viterbi[][],
+			double viterbiPointer[][], int numState, String stateSymbols[]) {
+		
+		
+		
+		
+		return null;
+		
+	}
+	
+	
+	
+	
+
+}

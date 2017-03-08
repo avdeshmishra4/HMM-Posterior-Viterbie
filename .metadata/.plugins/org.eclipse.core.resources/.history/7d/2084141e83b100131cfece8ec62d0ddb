@@ -1,0 +1,225 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+
+public class Dice {
+
+	private static int numState = 2, eventSize = 6;															// creating instance variable for number of state and number of observations
+	private static double transFL = 0.01, transLF = 0.1, transFF = 1 - transFL,								// creating instance variable for transition between states
+			transLL = 1 - transLF;						
+	private static double[][] transProb = { { transFF, transFL },											// creating transition matrix
+			{ transLF, transLL } };
+
+	private static String stateSymbols[] = { "F", "L" };													// creating array of state symobls
+	private static String emmisionSymbols[] = { "1", "2", "3", "4", "5", "6" };								// creating array of emission symbols
+
+	private static double emProbFairDie = 0.16666666666666666;												// emission probability for fare die
+	private static double emProbLoadedDie1to5 = 0.1, emProbLoadedDie6 = 0.5;								// emission probability of loaded die for observation 1 to 5 and 6
+	private static double[][] emissionProb = {																// creating emission probability matrix
+			{ emProbFairDie, emProbFairDie, emProbFairDie, emProbFairDie,
+					emProbFairDie, emProbFairDie },
+			{ emProbLoadedDie1to5, emProbLoadedDie1to5, emProbLoadedDie1to5,
+					emProbLoadedDie1to5, emProbLoadedDie1to5, emProbLoadedDie6 } };
+	private static double[] startProbability = { 0.2, 0.8 };												// initial probability matrix
+
+	public static void main(String[] args) throws IOException {
+		String op = "E:/SPRING2014/bioinformatics-course/assignHMM/seqFile.txt";    						// file contains the output of the program
+		File seqOutFile = new File(op);																		// initialize the file	
+		BufferReaderAndWriter brw = new BufferReaderAndWriter();											// create object of BufferReaderAndWriter
+		BufferedWriter bw = brw.getWriter(seqOutFile);														// get the BufferedWriter from BufferReaderAndWriter to write in output file
+		String actualSequence;																				// declaration of actualSequence variable
+
+		HiddenMarkovModel hmm = new HiddenMarkovModel();													// create HiddenMarkovModel object
+		hmm.setNumState(numState);																			// set number of states in a model
+		hmm.setEventSize(eventSize);																		// set number of observation
+		hmm.setTransProb(transProb);																		// set transiton probability matrix
+		hmm.setEmissProb(emissionProb);																		// set emission probability matrix
+		hmm.setiProb(startProbability);																		// set start probability matrix
+
+		Dice d = new Dice();																				// creates object of own class
+
+		for (int i = 0; i < 20; i++) {																		// loop to create 20 different sequences with different transition probability from fair to loaded and loaded to fare
+
+			actualSequence = d.generateSequence(hmm);														// generates the sequence based on the hidden markov model
+
+			String observations = d.generateObservation(actualSequence, hmm);								// generates the observation sequence from the actual sequence based on the hidden markov model
+
+			ViterbiPredictor vp = new ViterbiPredictor();													// creates viterbipredictor object to predict using viterbi decoding
+
+			vp.generateViterbiMatrixAndPointerMatrix(actualSequence, observations, hmm, bw, stateSymbols);	// creates the viterbi matrix, viterbi pointer matrix and calls viterbiTraceBack method to predict the sequence of states 
+
+			PosteriorPredictor pp = new PosteriorPredictor();												// creates object of PosteriorPredictor type 
+			double forwardMatrix[][] = pp.forwardAlgorithm(actualSequence,									// calls Posterior forwardAlgorithm to create forward matrix
+					observations, hmm, bw, stateSymbols);
+			pp.backwardAlgorithm(actualSequence, observations, hmm, bw,										// calls posterior backwardAlgorithm to predict the sequence of states using Posterior decoding	
+					stateSymbols, forwardMatrix);
+
+			if(i == 17){
+				
+				System.out.println(i);
+				
+			}
+			
+			hmm.setTransProb(0, 1, hmm.getTransProb(0, 1) + 0.01);											// increase transition probability from fare to laoded by 0.01 in each loop back
+			hmm.setTransProb(1, 0, hmm.getTransProb(1, 0) + 0.05);											// increase transition probability from loaded to fare by 0.05 in each loop back
+
+			hmm.setTransProb(0, 0, (1- hmm.getTransProb(0, 1)));												// once the transition probability from fare to loaded is changed we also need to change fare to fare probability
+			hmm.setTransProb(1, 1, (1-hmm.getTransProb(1, 0)));												// similarly we also need to change loaded to loaded probability
+			
+			
+			
+		}
+
+		bw.close();
+
+	}
+
+	/*
+	 * generateObservation method takes two arguments
+	 * "seq (sequence of "F" Fare and "L" Loaded symbols of length 1000)" and "hmm (Hidden
+	 * Markov Model object to retrive the transition and emission probibilites
+	 * depending on whcih sequence of observations are generated)" output of
+	 * this method is the sequence of observation of length 1000 (e.g.
+	 * 126435453252432523423......)
+	 */
+
+	public String generateObservation(String seq, HiddenMarkovModel hmm)
+			throws IOException {
+
+		double range[][] = new double[hmm.getNumState()][hmm.getEventSize()];					// initialize a new matrix which holds the values which are computed to determine the probability based observation
+		StringBuilder sb = new StringBuilder();													// StringBuilder is used to append the symbols of emission
+
+		for (int i = 0; i < hmm.getNumState(); i++) {											// this loop calculates the threshold for each of the symbols being emitted
+			double sum = 0;
+			for (int j = 0; j < hmm.getEventSize(); j++) {
+
+				sum = sum + hmm.getEmissProb(i, j);
+
+				range[i][j] = sum;
+			}
+
+		}
+
+		for (int k = 0; k < 1000; k++) {														// this loop takes each symbol of states in actual sequence and on the  
+																								// basis of the emission probability of HiddenMarkovModel 			
+			String currState = seq.charAt(k) + "";												// generates the sequence of observation such as (12534562435....)
+
+			double randNum = Math.random();
+			int stateIndex = 0;
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				if (stateSymbols[l].equalsIgnoreCase(currState.trim())) {
+
+					stateIndex = l;
+					break;
+
+				}
+
+			}
+
+			for (int m = 0; m < range[stateIndex].length; m++) {
+
+				if (randNum < range[stateIndex][m]) {
+
+					sb.append(emmisionSymbols[m]);
+					break;
+
+				} else {
+
+					continue;
+
+				}
+
+			}
+
+		}
+
+		return sb.toString();																	// this method returns the sequence of observation	
+
+	}
+
+	/*
+	 * generateSequence is the method which takes two arguments
+	 * "transFL (transition probability from fare to loaded)" and
+	 * "transLF (transition probability from loaded to fare)" and depending on
+	 * these probibilities generate the sequence of states "F (Fare)" and
+	 * "L (Loaded)" of lenght 1000
+	 * 
+	 * It returns sequence of symbols of states such as (FFFFLLLFLFFFFFFLLLLLLL ....)
+	 */
+
+	public String generateSequence(HiddenMarkovModel hmm) throws IOException {
+
+		StringBuilder sbStates = new StringBuilder();
+		String currentState = "";
+		double transitionMatrix[][] = new double[hmm.getNumState()][hmm
+				.getNumState()];
+
+		for (int i = 0; i < transitionMatrix[0].length; i++) {
+
+			double sum = 0;
+			for (int j = 0; j < transitionMatrix[0].length; j++) {
+
+				sum = sum + hmm.getTransProb(i, j);
+
+				transitionMatrix[i][j] = sum;
+			}
+
+		}
+		// selecting start state on the basis of the initial probibilities
+
+		if (hmm.getiProb(0) > hmm.getiProb(1)) {
+
+			currentState = stateSymbols[0];
+			sbStates.append(stateSymbols[0]);
+
+		} else {
+
+			currentState = stateSymbols[1];
+			sbStates.append(stateSymbols[1]);
+
+		}
+
+		for (int i = 1; i < 1000; i++) {
+
+			double random = Math.random();
+			int stateIndex = 0;
+			for (int j = 0; j < hmm.getNumState(); j++) {
+
+				if (currentState.equalsIgnoreCase(stateSymbols[j])) {
+
+					stateIndex = j;
+					break;
+
+				} else {
+
+					continue;
+				}
+
+			}
+
+			for (int k = 0; k < hmm.getNumState(); k++) {
+
+				if (random < transitionMatrix[stateIndex][k]) {
+
+					currentState = stateSymbols[k];
+					sbStates.append(stateSymbols[k]);
+					break;
+
+				} else {
+
+					continue;
+
+				}
+
+			}
+
+		}
+
+		return sbStates.toString();
+
+	}
+
+}

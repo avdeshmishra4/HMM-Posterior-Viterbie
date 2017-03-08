@@ -1,0 +1,35 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class PosteriorPredictor {
+	
+	
+	public void forwardAlgorithm(String actualSequence, String obs,
+			HiddenMarkovModel hmm, BufferedWriter bw, String stateSymbols[]) throws IOException {
+		
+		int seqLen = obs.length();
+		double forwardMatrix[][] = new double[hmm.getNumState()][seqLen+1]; 
+		
+		
+		
+		
+	}
+
+	
+	public String backwardAlogrithm(double viterbi[][],
+			double viterbiPointer[][], int numState, String stateSymbols[]) {
+		
+		
+		
+		
+		return null;
+		
+	}
+	
+	
+	
+	
+
+}

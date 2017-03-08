@@ -1,0 +1,194 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+
+public class Dice {
+
+	private static int numState = 2, eventSize = 6;
+	private static double transFL = 0.01, transLF = 0.1, transFF = 1 - transFL,
+			transLL = 1 - transLF;
+	private static double[][] transProb = { { transFF, transFL },
+			{ transLF, transLL } };
+
+	private static String stateSymbols[] = { "F", "L" };
+	private static String emmisionSymbols[] = { "1", "2", "3", "4", "5", "6" };
+
+	private static double emProbFairDie = 0.16666666666666666;
+	private static double emProbLoadedDie1to5 = 0.1, emProbLoadedDie6 = 0.5;
+	private static double[][] emissionProb = {
+			{ emProbFairDie, emProbFairDie, emProbFairDie, emProbFairDie,
+					emProbFairDie, emProbFairDie },
+			{ emProbLoadedDie1to5, emProbLoadedDie1to5, emProbLoadedDie1to5,
+					emProbLoadedDie1to5, emProbLoadedDie1to5, emProbLoadedDie6 } };
+	private static double[] startProbability = { 0.8, 0.2 };
+
+	public static void main(String[] args) throws IOException {
+		String op = "E:/SPRING2014/bioinformatics-course/assignHMM/seqFile.txt";
+		File seqOutFile = new File(op);
+		BufferReaderAndWriter brw = new BufferReaderAndWriter();
+		BufferedWriter bw = brw.getWriter(seqOutFile);
+		String actualSequence;
+
+		HiddenMarkovModel hmm = new HiddenMarkovModel();
+		hmm.setNumState(numState);
+		hmm.setEventSize(eventSize);
+		hmm.setTransProb(transProb);
+		hmm.setEmissProb(emissionProb);
+		hmm.setiProb(startProbability);
+
+		Dice d = new Dice();
+
+		for (int i = 0; i < 20; i++) {
+
+			actualSequence = d.generateSequence(hmm, hmm.getTransProb(0, 1),
+					hmm.getTransProb(1, 0));
+
+			String observations = d.generateObservation(actualSequence, hmm);
+
+			ViterbiPredictor vp = new ViterbiPredictor();
+
+			vp.test(actualSequence, observations, hmm, bw, stateSymbols);
+
+			PosteriorPredictor pp = new PosteriorPredictor();
+			double forwardMatrix[][] = pp.forwardAlgorithm(actualSequence,
+					observations, hmm, bw, stateSymbols);
+			pp.backwardAlgorithm(actualSequence, observations, hmm, bw,
+					stateSymbols, forwardMatrix);
+
+			// transition probibility from fare to loaded is being incremented
+			// by 0.01 and from loaded to fare is being incremented by 0.05
+
+			hmm.setTransProb(0, 1, hmm.getTransProb(0, 1) + 0.01);
+			hmm.setTransProb(1, 0, hmm.getTransProb(1, 0) + 0.05);
+
+		}
+
+		bw.close();
+
+	}
+
+	/*
+	 * generateObservation method takes two arguments
+	 * "seq (sequence of Fare and Loaded of length 1000)" and "hmm (Hidden
+	 * Markov Model object to retrive the transition and emission probibilites
+	 * depending on whcih sequence of observations are generated)" output of
+	 * this method is the sequence of observation of length 1000 (e.g.
+	 * 126435453252432523423......)
+	 */
+
+	public String generateObservation(String seq, HiddenMarkovModel hmm)
+			throws IOException {
+
+		double range[][] = new double[hmm.getNumState()][hmm.getEventSize()];
+		StringBuilder sb = new StringBuilder();
+
+		for (int i = 0; i < hmm.getNumState(); i++) {
+			double sum = 0;
+			for (int j = 0; j < hmm.getEventSize(); j++) {
+
+				sum = sum + hmm.getEmissProb(i, j);
+
+				range[i][j] = sum;
+			}
+
+		}
+
+		for (int k = 0; k < 1000; k++) {
+
+			String currState = seq.charAt(k) + "";
+
+			double randNum = Math.random();
+			int stateIndex = 0;
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				if (stateSymbols[l].equalsIgnoreCase(currState.trim())) {
+
+					stateIndex = l;
+					break;
+
+				}
+
+			}
+
+			for (int m = 0; m < range[stateIndex].length; m++) {
+
+				if (randNum < range[stateIndex][m]) {
+					sb.append(emmisionSymbols[m]);
+					break;
+
+				} else {
+
+					continue;
+
+				}
+
+			}
+
+		}
+
+		System.out.println("Dynamic : " + sb.toString());
+
+		return sb.toString();
+
+	}
+
+	/*
+	 * generateSequence is the method which takes two arguments
+	 * "transFL (transition probability from fare to loaded)" and
+	 * "transLF (transition probability from loaded to fare)" and depending on
+	 * these probibilities generate the sequence of states "F (Fare)" and
+	 * "L (Loaded)" of lenght 1000
+	 */
+
+	public String generateSequence(HiddenMarkovModel hmm, double transFL,
+			double transLF) throws IOException {
+
+		StringBuilder sbStates = new StringBuilder();
+		String currentState = "";
+		if (hmm.getiProb()[0] > hmm.getiProb()[1]) {
+
+			currentState = "F";
+			sbStates.append("F");
+
+		} else {
+
+			currentState = "L";
+			sbStates.append("L");
+
+		}
+
+		for (int i = 1; i < 1000; i++) {
+
+			double random = Math.random();
+
+			if (currentState == "F" && random > transFL) {
+
+				sbStates.append("F");
+				currentState = "F";
+
+			} else if (currentState == "F" && random <= transFL) {
+
+				sbStates.append("L");
+				currentState = "L";
+
+			} else if (currentState == "L" && random > transLF) {
+
+				sbStates.append("L");
+				currentState = "L";
+
+			} else if (currentState == "L" && random <= transLF) {
+
+				sbStates.append("F");
+				currentState = "F";
+
+			}
+
+		}
+
+		return sbStates.toString();
+
+	}
+
+}

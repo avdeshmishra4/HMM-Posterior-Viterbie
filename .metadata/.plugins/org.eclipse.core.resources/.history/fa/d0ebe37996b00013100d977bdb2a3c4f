@@ -1,0 +1,348 @@
+package dishonestcasino;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+
+public class ViterbiPredictor {
+
+	public void test(String actualSequence, String obs, HiddenMarkovModel hmm,
+			BufferedWriter bw, String stateSymbols[]) throws IOException {
+		int seqLen = obs.length();
+		double viterbi[][] = new double[hmm.getNumState()][seqLen + 1];
+		int viterbiPointer[][] = new int[hmm.getNumState()][seqLen + 1];
+
+		for (int i = 0; i < hmm.getNumState(); i++) {
+
+			viterbi[i][0] = Math.log10(hmm.getiProb()[i]);
+			viterbiPointer[i][0] = 0;
+
+		}
+
+		for (int k = 1; k < seqLen + 1; k++) {
+
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				int numState = 0;
+				double max = 0;
+				int maxStateRepresentative = 0;
+
+				while (numState < hmm.getNumState()) {
+
+					if (numState == 0) {
+
+						max = viterbi[numState][k - 1]
+								* Math.log10(hmm.getTransProb()[numState][l]);
+						maxStateRepresentative = numState;
+						numState++;
+
+					} else {
+
+						if (max < viterbi[numState][k - 1]
+								* Math.log10(hmm.getTransProb()[numState][l])) {
+
+							max = viterbi[numState][k - 1]
+									* Math.log10(hmm.getTransProb()[numState][l]);
+
+							maxStateRepresentative = numState;
+							numState++;
+						}
+
+						numState++;
+					}
+
+				}
+
+				viterbi[l][k] = Math.log10(hmm.getEmissProb()[l][Character
+						.getNumericValue(obs.charAt(k - 1)) - 1] + max);
+				viterbiPointer[l][k] = maxStateRepresentative;
+
+			}
+
+		}
+
+		String traceBackSequence = test2(viterbi, viterbiPointer,
+				hmm.getNumState(), stateSymbols);
+
+		bw.write("Roll :            " + obs);
+		bw.newLine();
+
+		bw.write("Die :             " + actualSequence);
+		bw.newLine();
+
+		bw.write("Viterbi :         " + traceBackSequence);
+		bw.newLine();
+
+		printAccuracy(actualSequence, traceBackSequence, bw);
+
+	}
+
+	public String test2(double viterbi[][], int viterbiPointer[][],
+			int numState, String stateSymbols[]) {
+
+		StringBuilder sb = new StringBuilder();
+		StringBuilder sbReverse = new StringBuilder();
+		double traceBackStartValue = viterbi[0][viterbi[0].length - 1];
+		int stateIndex = 0;
+		String predictedSeq[] = new String[viterbi[0].length-1];
+
+		for (int x = 1; x < numState; x++) {
+
+			if (traceBackStartValue < viterbi[x][viterbi[x].length - 1]) {
+				traceBackStartValue = viterbi[x][viterbi[x].length - 1];
+				stateIndex = x;
+			}
+
+		}
+
+		for (int y = 0; y < numState; y++) {
+
+			if (stateIndex == y) {
+
+		//		predictedSeq[predictedSeq.length-1] = stateSymbols[y];
+				
+				sb.append(stateSymbols[y]);
+
+			}
+
+		}
+
+		
+		
+		for (int i = viterbiPointer[0].length - 3; i >= 0; i--) {
+			
+			int stateCount = viterbiPointer[stateIndex][i];
+			
+		//	predictedSeq[i] = stateSymbols[stateCount];
+			
+			sb.append(stateSymbols[stateCount]);
+			
+			stateIndex = stateCount;
+			
+			
+		}
+
+		// System.out.println(sb.toString());
+
+		for (int j = sb.length() - 1; j >= 0; j--) {
+
+			char st = sb.charAt(j);
+
+			sbReverse.append(st);
+
+		}
+
+		return sbReverse.toString();
+
+	}
+
+	/*
+	 * generateViterbiMatrixAndPointerMatrix method generates viterbi matrix and
+	 * it's corresponding pointer matrix to generate the sequence of states from
+	 * the observations
+	 * 
+	 * here Math.max() will return same number if two arguments to the function
+	 * is same.
+	 * 
+	 * here 1 and -1 in pointer table symbolize Fare and Loaded
+	 * 
+	 * if both values in fare and loaded are same then most probable path will
+	 * be from fare
+	 */
+
+	public void generateViterbiMatrixAndPointerMatrix(String actualSequence,
+			String obs, HiddenMarkovModel hmm, BufferedWriter bw,
+			String stateSymbols[]) throws IOException {
+		int seqLen = obs.length();
+		double viterbi[][] = new double[hmm.getNumState()][seqLen + 1];
+		double viterbiPointer[][] = new double[hmm.getNumState()][seqLen + 1];
+		double path1;
+		double path2;
+		double mostProbable;
+		double emProb;
+
+		for (int i = 0; i < hmm.getNumState(); i++) {
+
+			viterbi[i][0] = Math.log10(hmm.getiProb()[i]);
+			viterbiPointer[i][0] = Math.log10(hmm.getiProb()[i]);
+
+		}
+
+		for (int k = 1; k < seqLen + 1; k++) {
+
+			for (int l = 0; l < hmm.getNumState(); l++) {
+
+				int stateCount = 0;
+				double pathEndInFEmit = viterbi[stateCount][k - 1];
+				double pathEndInLEmit = viterbi[stateCount + 1][k - 1];
+				int curObs = Character.getNumericValue(obs.charAt(k - 1));
+
+				if (l == 0) {
+
+					path1 = pathEndInFEmit
+							+ Math.log10(hmm.getTransProb()[0][0]);
+					path2 = pathEndInLEmit
+							+ Math.log10(hmm.getTransProb()[1][0]);
+
+					mostProbable = Math.max(path1, path2);
+					emProb = Math.log10(hmm.getEmissProb()[l][curObs - 1]);
+
+					viterbi[l][k] = emProb + mostProbable;
+
+					if (mostProbable == path1) {
+
+						viterbiPointer[l][k] = 1;
+
+					} else if (mostProbable == path2) {
+
+						viterbiPointer[l][k] = -1;
+
+					}
+
+				} else {
+
+					path1 = pathEndInFEmit
+							+ Math.log10(hmm.getTransProb()[0][1]);
+					path2 = pathEndInLEmit
+							+ Math.log10(hmm.getTransProb()[1][1]);
+
+					mostProbable = Math.max(path1, path2);
+					emProb = Math.log10(hmm.getEmissProb()[l][curObs - 1]);
+
+					viterbi[l][k] = emProb + mostProbable;
+
+					if (mostProbable == path1) {
+
+						viterbiPointer[l][k] = 1;
+
+					} else if (mostProbable == path2) {
+
+						viterbiPointer[l][k] = -1;
+
+					}
+
+				}
+
+			}
+
+		}
+
+		String traceBackSequence = viterbiTraceBack(viterbi, viterbiPointer,
+				hmm.getNumState(), stateSymbols);
+
+		bw.write("Roll :            " + obs);
+		bw.newLine();
+
+		bw.write("Die :             " + actualSequence);
+		bw.newLine();
+
+		bw.write("Viterbi :         " + traceBackSequence);
+		bw.newLine();
+
+		printAccuracy(actualSequence, traceBackSequence, bw);
+
+	}
+
+	/*
+	 * 
+	 */
+
+	public String viterbiTraceBack(double viterbi[][],
+			double viterbiPointer[][], int numState, String stateSymbols[]) {
+
+		StringBuilder sb = new StringBuilder();
+		StringBuilder sbReverse = new StringBuilder();
+		double traceBackStartValue = viterbi[0][viterbi[0].length - 1];
+		int stateIndex = 0;
+
+		for (int x = 1; x < numState; x++) {
+
+			if (traceBackStartValue > viterbi[0][viterbi[0].length - 1]) {
+				traceBackStartValue = viterbi[x][viterbi[x].length - 1];
+				stateIndex = x;
+			}
+
+		}
+
+		for (int y = 0; y < numState; y++) {
+
+			if (stateIndex == y) {
+
+				sb.append(stateSymbols[y]);
+
+			}
+
+		}
+
+		for (int i = viterbiPointer[0].length - 2; i >= 0; i--) {
+
+			if (viterbiPointer[stateIndex][i] == 1) {
+
+				sb.append("F");
+			} else if (viterbiPointer[stateIndex][i] == -1) {
+
+				sb.append("L");
+
+			}
+
+		}
+
+		// System.out.println(sb.toString());
+
+		for (int j = sb.length() - 1; j >= 0; j--) {
+
+			char st = sb.charAt(j);
+
+			sbReverse.append(st);
+
+		}
+
+		return sbReverse.toString();
+
+	}
+
+	public void printAccuracy(String actualSequence, String predictedSequence,
+			BufferedWriter bw) throws IOException {
+
+		int tpCount = 0;
+		int tnCount = 0;
+		int fpCount = 0;
+		int fnCount = 0;
+		double accuracy = 0;
+
+		for (int j = 0; j < actualSequence.length(); j++) {
+
+			if (actualSequence.charAt(j) == predictedSequence.charAt(j)
+					&& actualSequence.charAt(j) == 'F') {
+
+				tpCount = tpCount + 1;
+
+			} else if (actualSequence.charAt(j) == predictedSequence.charAt(j)
+					&& actualSequence.charAt(j) == 'L') {
+
+				tnCount = tnCount + 1;
+
+			} else if (actualSequence.charAt(j) != predictedSequence.charAt(j)
+					&& actualSequence.charAt(j) == 'F'
+					&& predictedSequence.charAt(j) == 'L') {
+
+				fpCount = fpCount + 1;
+
+			} else if (actualSequence.charAt(j) != predictedSequence.charAt(j)
+					&& actualSequence.charAt(j) == 'L'
+					&& predictedSequence.charAt(j) == 'F') {
+
+				fnCount = fnCount + 1;
+
+			}
+
+		}
+
+		accuracy = (tpCount + tnCount) / (actualSequence.length() + 0.0);
+
+		bw.write("Viterbi Accuracy  : " + accuracy);
+
+		bw.newLine();
+
+	}
+
+}
